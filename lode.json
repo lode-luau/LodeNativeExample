@@ -1,0 +1,12 @@
+{
+  "name": "native_example",
+  "version": "1.0.0",
+  "description": "External native package example for Lode",
+  "author": "Lode Team",
+  "license": "MIT",
+  "libraries": {
+    "windows": {
+      "x64": "libs/windows/x64/native_example.dll"
+    }
+  }
+}
