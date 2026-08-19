@@ -3,6 +3,7 @@
 export type NativeExample = {
     add: (left: number, right: number) -> number,
     identity: (value: string) -> string,
+    sha256: ((value: string) -> string)?,
 }
 
 return {} :: NativeExample
