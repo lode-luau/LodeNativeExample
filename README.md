@@ -18,6 +18,24 @@ ctest --test-dir build -C Debug --output-on-failure
 `.`. The package's `init.luau` contains Luau types; the runtime loads the
 native library selected by `lode.json`.
 
+The optional OpenSSL validation uses the build machine's OpenSSL installation
+without adding a dependency field to `lode.json`:
+
+```powershell
+cmake -S . -B build-openssl `
+  -G "Visual Studio 17 2022" -A x64 `
+  -DCMAKE_PREFIX_PATH="<lode-sdk-prefix>" `
+  -DOPENSSL_ROOT_DIR="<openssl-prefix>" `
+  -DLODE_NATIVE_EXAMPLE_WITH_OPENSSL=ON `
+  -DLODE_RUNTIME="<lode-sdk-prefix>/bin/Debug/lode.exe"
+cmake --build build-openssl --config Debug
+ctest --test-dir build-openssl -C Debug --output-on-failure
+```
+
+When enabled on Windows, the OpenSSL crypto DLL is copied beside the native
+module under `libs/windows/x64/<configuration>/`. A release package must also
+provide the required third-party notice in its root `NOTICE` file.
+
 The generated library is written to:
 
 ```text
