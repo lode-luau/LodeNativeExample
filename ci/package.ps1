@@ -44,7 +44,7 @@ try {
     New-Item -ItemType Directory -Force $workRoot, $stageRoot, $extractRoot, $archiveDirectory | Out-Null
 
     Write-Host "Validating source package..."
-    Invoke-Lode @("ci", "validate", $packageRoot)
+    Invoke-Lode @("ci", "validate", "--artifact", $packageRoot)
 
     Copy-PackageFile "lode.json"
     Copy-PackageFile "init.luau"
@@ -104,7 +104,7 @@ try {
     finally {
         Pop-Location
     }
-    Invoke-Lode @("ci", "validate", $extractRoot)
+    Invoke-Lode @("ci", "validate", "--artifact", $extractRoot)
 
     Write-Host "Package archive: $archive"
     Write-Host "SHA-256 file: $checksum"
