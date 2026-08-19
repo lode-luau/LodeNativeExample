@@ -41,3 +41,17 @@ The generated library is written to:
 ```text
 libs/windows/x64/<configuration>/native_example.dll
 ```
+
+To create one package archive containing the validated Debug and Release
+artifacts, run the packaging script with a matching Lode executable:
+
+```powershell
+./ci/package.ps1 `
+  -Runtime "<lode-sdk-prefix>/bin/Release/lode.exe" `
+  -ArchivePath "./out/native_example-1.0.0-windows-x64.zip"
+```
+
+The script validates the source package, stages only package files and Luau
+sources plus `libs/`, writes a SHA-256 sidecar, extracts into a clean temporary
+directory, and validates the extracted package again. The archive name is
+supplied by the caller until the release naming convention is finalized.
