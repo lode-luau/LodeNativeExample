@@ -1,0 +1,151 @@
+name: Lode CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# BEGIN LODE MANAGED: v1
+env:
+  LODE_REPOSITORY: lode-luau/LodeRuntime
+  # Pin these values to an existing Lode nightly release before enabling CI.
+  LODE_SDK_VERSION: "<nightly-version>"
+  LODE_SDK_SHA256: "<sdk-sha256>"
+
+jobs:
+  native-windows-x64:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+
+      - name: Download pinned Lode SDK
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          if ($env:LODE_SDK_VERSION.Contains("<") -or $env:LODE_SDK_SHA256 -notmatch "^[0-9a-fA-F]{64}$") {
+              throw "Set LODE_SDK_VERSION and the 64-character LODE_SDK_SHA256 in the generated workflow."
+          }
+          $downloadRoot = Join-Path $env:RUNNER_TEMP "lode-sdk-download"
+          $sdkRoot = Join-Path $env:RUNNER_TEMP "lode-sdk"
+          New-Item -ItemType Directory -Force $downloadRoot, $sdkRoot | Out-Null
+          $asset = "lode-sdk-windows-x64-$env:LODE_SDK_VERSION.zip"
+          gh release download $env:LODE_SDK_VERSION --repo $env:LODE_REPOSITORY --pattern $asset --pattern "$asset.sha256" --dir $downloadRoot
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $archive = Join-Path $downloadRoot $asset
+          $checksumFile = "$archive.sha256"
+          $expected = (Get-Content $checksumFile -Raw).Trim().Split(" ")[0].ToLowerInvariant()
+          $actual = (Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($expected -ne $actual -or $env:LODE_SDK_SHA256.ToLowerInvariant() -ne $actual) {
+              throw "Lode SDK SHA-256 verification failed."
+          }
+          Expand-Archive -LiteralPath $archive -DestinationPath $sdkRoot -Force
+          "LODE_SDK_ROOT=$sdkRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Validate package source
+        shell: pwsh
+        run: |
+          & "$env:LODE_SDK_ROOT/bin/Release/lode.exe" ci validate --source .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      # Add package-specific dependency provisioning here. OpenSSL and other
+      # native dependencies remain CMake/CI responsibilities.
+      - name: Configure Debug
+        shell: pwsh
+        run: |
+          cmake -S . -B build-lode-debug -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_PREFIX_PATH="$env:LODE_SDK_ROOT" `
+            -DLODE_RUNTIME="$env:LODE_SDK_ROOT/bin/Debug/lode.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build Debug
+        run: cmake --build build-lode-debug --config Debug --parallel 2
+
+      - name: Test Debug
+        run: ctest --test-dir build-lode-debug -C Debug --output-on-failure
+
+      - name: Configure Release
+        shell: pwsh
+        run: |
+          cmake -S . -B build-lode-release -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_PREFIX_PATH="$env:LODE_SDK_ROOT" `
+            -DLODE_RUNTIME="$env:LODE_SDK_ROOT/bin/Release/lode.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build Release
+        run: cmake --build build-lode-release --config Release --parallel 2
+
+      - name: Test Release
+        run: ctest --test-dir build-lode-release -C Release --output-on-failure
+
+      - name: Validate package artifact
+        shell: pwsh
+        run: |
+          & "$env:LODE_SDK_ROOT/bin/Release/lode.exe" ci validate --artifact .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Package validated artifact
+        shell: pwsh
+        run: |
+          if (-not (Test-Path -LiteralPath "ci/package.ps1")) {
+              throw "Native package CI requires ci/package.ps1."
+          }
+          $manifest = Get-Content lode.json -Raw | ConvertFrom-Json
+          $archive = "out/lode-$($manifest.name)-$($manifest.version)-windows-x64.zip"
+          New-Item -ItemType Directory -Force out | Out-Null
+          & ./ci/package.ps1 -Runtime "$env:LODE_SDK_ROOT/bin/Release/lode.exe" -ArchivePath $archive
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "PACKAGE_ARCHIVE=$archive" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Verify release tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $manifest = Get-Content lode.json -Raw | ConvertFrom-Json
+          $expected = "v$($manifest.version)"
+          if ("$env:GITHUB_REF_NAME" -ne $expected) {
+              throw "Release tag $env:GITHUB_REF_NAME does not match $expected."
+          }
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: lode-package-windows-x64
+          path: out/*
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: native-windows-x64
+    runs-on: windows-2022
+    permissions:
+      contents: write
+    steps:
+      - name: Download package artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: lode-package-windows-x64
+          path: out
+
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $archive = Get-ChildItem out -Filter "*.zip" | Select-Object -First 1
+          if ($null -eq $archive) { throw "Package archive was not found." }
+          $checksum = "$($archive.FullName).sha256"
+          if (-not (Test-Path -LiteralPath $checksum)) { throw "Package checksum was not found." }
+          gh release create $env:GITHUB_REF_NAME $archive.FullName $checksum `
+            --verify-tag --title "Package $env:GITHUB_REF_NAME" `
+            --notes "Published by the generated Lode CI workflow."
+
+# END LODE MANAGED

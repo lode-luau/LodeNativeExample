@@ -55,3 +55,15 @@ The script validates the source package, stages only package files and Luau
 sources plus `libs/`, writes a SHA-256 sidecar, extracts into a clean temporary
 directory, and validates the extracted package again. The archive name is
 supplied by the caller until the release naming convention is finalized.
+
+The package workflow is generated with:
+
+```powershell
+<lode-runtime> ci init
+```
+
+This initial generated workflow targets Windows x64. Before enabling it, set
+`LODE_SDK_VERSION` and `LODE_SDK_SHA256` in `.github/workflows/lode.yml` to a
+published Lode nightly SDK asset. The workflow keeps build/test permissions
+read-only and gives release write permission only to its tag-gated release
+job.
