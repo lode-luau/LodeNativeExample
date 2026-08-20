@@ -14,8 +14,9 @@ permissions:
 # BEGIN LODE MANAGED: v1
 env:
   LODE_REPOSITORY: lode-luau/LodeRuntime
-  LODE_SDK_VERSION: "1.0.0-nightly.20260820.2"
-  LODE_SDK_SHA256: "688a7b00fce147a561a32d983994bfdbe9c7241ec8d8d624ffbe3ea852fdd42e"
+  LODE_SDK_VERSION: "1.0.0-nightly.20260820.4"
+  LODE_SDK_SHA256: "eb53e03fa5723bd6b2757cb6bc1007ccbeb781f6a9bd53716a36f32fad06e92c"
+
 
 jobs:
   native-windows-x64:
@@ -52,7 +53,7 @@ jobs:
       - name: Validate package source
         shell: pwsh
         run: |
-          & "$env:LODE_SDK_ROOT/bin/Release/lode.exe" ci validate --source .
+          & "$env:LODE_SDK_ROOT/bin/Release/lode.exe" ci validate --source --locked .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       # Add package-specific dependency provisioning here. OpenSSL and other
@@ -88,19 +89,16 @@ jobs:
       - name: Validate package artifact
         shell: pwsh
         run: |
-          & "$env:LODE_SDK_ROOT/bin/Release/lode.exe" ci validate --artifact .
+          & "$env:LODE_SDK_ROOT/bin/Release/lode.exe" ci validate --artifact --locked .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Package validated artifact
         shell: pwsh
         run: |
-          if (-not (Test-Path -LiteralPath "ci/package.ps1")) {
-              throw "Native package CI requires ci/package.ps1."
-          }
           $manifest = Get-Content lode.json -Raw | ConvertFrom-Json
           $archive = "out/lode-$($manifest.name)-$($manifest.version)-windows-x64.zip"
           New-Item -ItemType Directory -Force out | Out-Null
-          & ./ci/package.ps1 -Runtime "$env:LODE_SDK_ROOT/bin/Release/lode.exe" -ArchivePath $archive
+          & "$env:LODE_SDK_ROOT/bin/Release/lode.exe" pack --output $archive .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "PACKAGE_ARCHIVE=$archive" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
@@ -144,7 +142,6 @@ jobs:
           $checksum = "$($archive.FullName).sha256"
           if (-not (Test-Path -LiteralPath $checksum)) { throw "Package checksum was not found." }
           gh release create $env:GITHUB_REF_NAME $archive.FullName $checksum `
-            --repo $env:GITHUB_REPOSITORY `
             --verify-tag --title "Package $env:GITHUB_REF_NAME" `
             --notes "Published by the generated Lode CI workflow."
 
