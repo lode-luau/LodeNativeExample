@@ -79,16 +79,7 @@ try {
     }
 
     Write-Host "Creating archive..."
-    Push-Location $stageRoot
-    try {
-        & cmake -E tar cf $archive .
-        if ($LASTEXITCODE -ne 0) {
-            throw "CMake archive creation failed with exit code $LASTEXITCODE."
-        }
-    }
-    finally {
-        Pop-Location
-    }
+    Compress-Archive -Path (Join-Path $stageRoot "*") -DestinationPath $archive -CompressionLevel Optimal
 
     $hash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
     "$hash  $([System.IO.Path]::GetFileName($archive))" | Set-Content -LiteralPath $checksum -Encoding ascii
