@@ -14,8 +14,8 @@ permissions:
 # BEGIN LODE MANAGED: v1
 env:
   LODE_REPOSITORY: lode-luau/LodeRuntime
-  LODE_SDK_VERSION: "1.0.0-nightly.20260820.1"
-  LODE_SDK_SHA256: "4ff00de8b5ad129f79638a9afa9b9002ffb24e72803923ee8bafc3ce9e268e18"
+  LODE_SDK_VERSION: "1.0.0-nightly.20260820.2"
+  LODE_SDK_SHA256: "688a7b00fce147a561a32d983994bfdbe9c7241ec8d8d624ffbe3ea852fdd42e"
 
 jobs:
   native-windows-x64:
