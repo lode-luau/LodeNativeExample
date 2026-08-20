@@ -53,8 +53,9 @@ artifacts, run the packaging script with a matching Lode executable:
 
 The script validates the source package, stages only package files and Luau
 sources plus `libs/`, writes a SHA-256 sidecar, extracts into a clean temporary
-directory, and validates the extracted package again. The archive name is
-supplied by the caller until the release naming convention is finalized.
+directory, and validates the extracted package again. The release workflow
+publishes `lode-native_example-1.0.0-windows-x64.zip` with a sibling `.sha256`
+file.
 
 The package workflow is generated with:
 
@@ -62,8 +63,7 @@ The package workflow is generated with:
 <lode-runtime> ci init
 ```
 
-This initial generated workflow targets Windows x64. Before enabling it, set
-`LODE_SDK_VERSION` and `LODE_SDK_SHA256` in `.github/workflows/lode.yml` to a
-published Lode nightly SDK asset. The workflow keeps build/test permissions
-read-only and gives release write permission only to its tag-gated release
-job.
+This generated workflow targets Windows x64 and pins the published Lode nightly
+SDK asset and its SHA-256 in `.github/workflows/lode.yml`. The workflow keeps
+build/test permissions read-only and gives release write permission only to its
+tag-gated release job.

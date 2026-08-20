@@ -14,9 +14,8 @@ permissions:
 # BEGIN LODE MANAGED: v1
 env:
   LODE_REPOSITORY: lode-luau/LodeRuntime
-  # Pin these values to an existing Lode nightly release before enabling CI.
-  LODE_SDK_VERSION: "<nightly-version>"
-  LODE_SDK_SHA256: "<sdk-sha256>"
+  LODE_SDK_VERSION: "1.0.0-nightly.20260820.1"
+  LODE_SDK_SHA256: "4ff00de8b5ad129f79638a9afa9b9002ffb24e72803923ee8bafc3ce9e268e18"
 
 jobs:
   native-windows-x64:
