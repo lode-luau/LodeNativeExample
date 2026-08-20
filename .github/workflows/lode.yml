@@ -144,6 +144,7 @@ jobs:
           $checksum = "$($archive.FullName).sha256"
           if (-not (Test-Path -LiteralPath $checksum)) { throw "Package checksum was not found." }
           gh release create $env:GITHUB_REF_NAME $archive.FullName $checksum `
+            --repo $env:GITHUB_REPOSITORY `
             --verify-tag --title "Package $env:GITHUB_REF_NAME" `
             --notes "Published by the generated Lode CI workflow."
 
